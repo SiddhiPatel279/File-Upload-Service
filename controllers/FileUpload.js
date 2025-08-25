@@ -37,17 +37,33 @@ function isFileTypeSupported(type,supportedTypes){
     return supportedTypes.includes(type)
 }
 
-async function uploadFiletoCloudinary(file,folder,quality) {
-    const options={folder}
-    console.log("temp file path ",file.tempFilePath)
+// async function uploadFiletoCloudinary(file,folder,quality) {
+//     const options={folder}
+//     console.log("temp file path ",file.tempFilePath)
 
-    if(quality){
-        options.quality=quality
+//     if(quality){
+//         options.quality=quality
+//     }
+//     options.resource_type='auto'
+//     return await cloudinary.uploader.upload(file.tempFilePath,options)
+//     // return await cloudinary.uploader.upload_large(file.tempFilePath,options)
+// }
+
+async function uploadFiletoCloudinary(file, folder, quality, height) {
+    const options = { folder };
+    console.log("Temp File Path:", file.tempFilePath);
+
+    if (quality) options.quality = quality;
+    if (height) {
+        options.height = height;   // resize height
+        options.crop = "scale";    // maintain aspect ratio
     }
-    options.resource_type='auto'
-    return await cloudinary.uploader.upload(file.tempFilePath,options)
-    // return await cloudinary.uploader.upload_large(file.tempFilePath,options)
+    options.resource_type = 'auto';
+
+    return await cloudinary.uploader.upload(file.tempFilePath, options);
 }
+
+
 // -------------------------------------------------------------------------------------------
 // image upload ka handler
 exports.imageUpload=async (req,res) => {
@@ -156,52 +172,94 @@ exports.videoUpload= async (req,res)=>{
 
 // imageSizeReducer Handler
 
-exports.imageSizeReducer = async (req,res)=>{
-    try{
-        // data fetch
-        const {name,tags,email} = req.body;
-        console.log(name,tags,email);
+// exports.imageSizeReducer = async (req,res)=>{
+//     try{
+//         // data fetch
+//         const {name,tags,email} = req.body;
+//         console.log(name,tags,email);
 
-        const file=req.files.imageFile  //Key value should be imageFile
-        console.log(file)
+//         const file=req.files.imageFile  //Key value should be imageFile
+//         console.log(file)
 
-        // Validation
-        const supportedTypes=['jpg','jpeg','png']
-        const fileType=file.name.split('.')[1].toLowerCase()
-        console.log("Filetype : ",fileType)
+//         // Validation
+//         const supportedTypes=['jpg','jpeg','png']
+//         const fileType=file.name.split('.')[1].toLowerCase()
+//         console.log("Filetype : ",fileType)
 
-        if(!isFileTypeSupported(fileType,supportedTypes)){
+//         if(!isFileTypeSupported(fileType,supportedTypes)){
+//             return res.status(400).json({
+//                 success:false,
+//                 message:'File format not supported'
+//             })
+//         }
+
+//         // if file format supported hai
+//         console.log("Uploading to Codehelp")
+//         // HW TODO ---> Use height attribute to compress the file
+//         const response = await uploadFiletoCloudinary(file,"FileUploadProject",30)
+//         console.log(response)
+
+//         // db mein entry save karne hai
+//         const fileData = await File.create({
+//             name,
+//             tags,
+//             email,
+//             imageUrl:response.secure_url
+//         })
+
+//         res.json({
+//             success:true,
+//             imageUrl:response.secure_url,
+//             message:'Image Successfully Uploaded'
+//         }) 
+//     }
+//      catch(error){
+//         console.error(error)
+//         res.status(400).json({
+//             success:false,
+//             message:'Something went wrong'
+//         })
+//     }
+// }
+
+
+exports.imageSizeReducer = async (req, res) => {
+    try {
+        const { name, tags, email } = req.body;
+        const file = req.files.imageFile;
+
+        const supportedTypes = ['jpg', 'jpeg', 'png'];
+        const fileType = file.name.split('.').pop().toLowerCase();
+        if (!isFileTypeSupported(fileType, supportedTypes)) {
             return res.status(400).json({
-                success:false,
-                message:'File format not supported'
-            })
+                success: false,
+                message: 'File format not supported'
+            });
         }
 
-        // if file format supported hai
-        console.log("Uploading to Codehelp")
-        // HW TODO ---> Use height attribute to compress the file
-        const response = await uploadFiletoCloudinary(file,"FileUploadProject",30)
-        console.log(response)
+        console.log("Uploading to Cloudinary with compression...");
+        const response = await uploadFiletoCloudinary(file, "FileUploadProject", 30, 500);
+        // quality = 30, height = 500px
+        console.log(response);
 
-        // db mein entry save karne hai
         const fileData = await File.create({
             name,
             tags,
             email,
-            imageUrl:response.secure_url
-        })
+            imageUrl: response.secure_url
+        });
 
         res.json({
-            success:true,
-            imageUrl:response.secure_url,
-            message:'Image Successfully Uploaded'
-        }) 
+            success: true,
+            imageUrl: response.secure_url,
+            message: 'Image Successfully Uploaded & Compressed'
+        });
     }
-     catch(error){
-        console.error(error)
+    catch (error) {
+        console.error(error);
         res.status(400).json({
-            success:false,
-            message:'Something went wrong'
-        })
+            success: false,
+            message: 'Something went wrong'
+        });
     }
-}
+};
